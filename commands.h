@@ -3,6 +3,7 @@
 #include "MyIO/MyIO.h"
 #include "sync.h"
 
+#include <functional>
 #include <iostream>
 #include <string>
 #include <map>
@@ -45,7 +46,7 @@ std::string str_lower(std::string str) {
 }
 
 // SetCurrentDelectry‚Ì”r‘¼“Iˆ—
-void SetCD(std::string path) {
+void SetCD(std::string path, std::function<void()> f) {
 	synchronized(mut) {
 		sc::time_point now = sc::system_clock::now();
 		past += sc::seconds(2);
@@ -56,6 +57,7 @@ void SetCD(std::string path) {
 			std::this_thread::sleep_for(past - now);
 			SetCurrentDirectory(utf8_decode(path).c_str());
 		}
+		f();
 		past = now;
 	}
 }
@@ -197,8 +199,9 @@ public:
 					const std::string p2cstr(R"( > \\.\pipe\)");
 					const std::string c2pstr(R"( < \\.\pipe\)");
 					settuped = true;
-					SetCD(JarPath.string());
-					system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+					SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
+						system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+						});
 					settuped = false;
 				}
 				catch (std::exception& e) {
@@ -231,8 +234,9 @@ public:
 							const std::string p2cstr(R"( > \\.\pipe\)");
 							const std::string c2pstr(R"( < \\.\pipe\)");
 							settuped = true;
-							SetCD(JarPath.string());
-							system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+							SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
+								system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+								});
 							settuped = false;
 						}
 						catch (std::exception& e) {
@@ -264,8 +268,9 @@ public:
 							const std::string p2cstr(R"( > \\.\pipe\)");
 							const std::string c2pstr(R"( < \\.\pipe\)");
 							settuped = true;
-							SetCD(JarPath.string());
-							system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+							SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
+								system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+								});
 							settuped = false;
 						}
 						catch (std::exception& e) {
