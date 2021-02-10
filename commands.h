@@ -40,8 +40,9 @@ extern std::mutex mut;
 
 //	¬•¶š‰»ŠÖ”
 std::string str_lower(std::string str) {
-	using namespace std;
-	transform(str.begin(), str.end(), str.begin(), tolower);
+	std::transform(str.begin(), str.end(), str.begin(),
+		[](unsigned char c) { return std::tolower(c); }
+	);
 	return str;
 }
 
@@ -82,9 +83,10 @@ public:
 		WaitTh = std::thread([this]() {
 			while (true)
 			{
-				if ((*io).join()) {
+				if (!(*io).isWaiting()) {
 					//	io‚Ìíœ
 					io.reset();
+					Sleep(100);
 					io = make_unique<my::io>(pipeName);
 					continue;
 				}
@@ -97,11 +99,12 @@ public:
 							*io >> cout;
 						}
 						catch (std::exception& e) {
-							cout << e.what() << ": 3•bŒã‚ÉÄ“Ç‚İ‚İ‚µ‚Ü‚·B" << endl;
+							cout << e.what() << ": 3•bŒã‚ÉÄ“Ç‚İ‚İ‚µ‚Ü‚·Bby " + pipeName << endl;
 							Sleep(3000);
 						}
 					}
 					});
+				break;
 			}
 			});
 	}
@@ -185,73 +188,71 @@ public:
 };
 
 class Server_Command : public Pipes_Command {
-	bool settuped = false;
+	bool setuped_server = false;
 	std::string cmdLine;
 	fs::path JarPath;
-	std::thread JoinWaitTh;
 	std::thread Process;
 public:
 	Server_Command(std::string _cmdLine, fs::path _JarPath, std::string PipeName) : Pipes_Command(PipeName), cmdLine(_cmdLine), JarPath(_JarPath) {
-		JoinWaitTh = std::thread([this] {
-			Sleep(500);
-			Process = std::thread([this] {
-				try {
-					const std::string p2cstr(R"( > \\.\pipe\)");
-					const std::string c2pstr(R"( < \\.\pipe\)");
-					settuped = true;
-					SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
-						system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
-						});
-					settuped = false;
+		Process = std::thread([this] {
+			try {
+				const std::string p2cstr(R"( > \\.\pipe\)");
+				const std::string c2pstr(R"( < \\.\pipe\)");
+
+				while (!(*this)) {
+					Sleep(100);
 				}
-				catch (std::exception& e) {
-					std::cout << e.what() << std::endl;
-				}
-				});
+
+				setuped_server = true;
+				SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
+					system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+					});
+				setuped_server = false;
+			}
+			catch (std::exception& e) {
+				std::cout << e.what() << std::endl;
+			}
 			});
-		settuped = true;
+		setuped_server = true;
 	}
 
 	void run(command_sturct& cs) {
 		// Ú‘±‚µ‚Ä‚È‚­‚Ä stop ‚¾‚Á‚½‚ç
 		if (str_lower(cs.args.at(0)) == "stop") {
-			if (settuped) {
-				settuped = false;
-				(*io) << "stop\n";
-				Process.join();
+			if (setuped_server) {
+				setuped_server = false;
+				if (io == nullptr)
+					(*io) << "stop\n";
+				Process.detach();
 			}
 			Pipes_Command::run(cs);
 		}
 		// ‹N“®‚³‚¹‚é
 		else if (str_lower(cs.args.at(0)) == "start") {
-			if (!settuped) {
+			if (!setuped_server) {
 				Pipes_Command::run(cs);
-				JoinWaitTh.join();
-				JoinWaitTh = std::thread([this] {
-					Sleep(500);
-					Process = std::thread([this] {
-						try {
-							const std::string p2cstr(R"( > \\.\pipe\)");
-							const std::string c2pstr(R"( < \\.\pipe\)");
-							settuped = true;
-							SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
-								system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
-								});
-							settuped = false;
-						}
-						catch (std::exception& e) {
-							std::cout << e.what() << std::endl;
-						}
-						});
+				Process.join();
+				Process = std::thread([this] {
+					try {
+						const std::string p2cstr(R"( > \\.\pipe\)");
+						const std::string c2pstr(R"( < \\.\pipe\)");
+						setuped_server = true;
+						SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
+							system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
+							});
+						setuped_server = false;
+					}
+					catch (std::exception& e) {
+						std::cout << e.what() << std::endl;
+					}
 					});
 			}
 		}
 		// restart
 		else if (str_lower(cs.args.at(0)) == "restart") {
-			JoinWaitTh.join();
-			JoinWaitTh = std::thread([&cs, this] {
-				if (settuped) {
-					settuped = false;
+			std::thread([&cs, this] {
+				if (setuped_server) {
+					setuped_server = false;
 					(*io) << "stop\n";
 					Process.join();
 					command_sturct a;
@@ -267,11 +268,11 @@ public:
 						try {
 							const std::string p2cstr(R"( > \\.\pipe\)");
 							const std::string c2pstr(R"( < \\.\pipe\)");
-							settuped = true;
+							setuped_server = true;
 							SetCD(JarPath.string(), [this, &p2cstr, &c2pstr] {
 								system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
 								});
-							settuped = false;
+							setuped_server = false;
 						}
 						catch (std::exception& e) {
 							std::cout << e.what() << std::endl;
@@ -285,7 +286,7 @@ public:
 		}
 	}
 	~Server_Command() {
-		if (settuped) {
+		if (setuped_server) {
 			*Pipes_Command::io << "stop";
 		}
 		setupped = false;

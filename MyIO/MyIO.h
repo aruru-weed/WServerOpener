@@ -8,6 +8,8 @@ std::wstring utf8_decode(const std::string& str);
 
 namespace my {
 	class io {
+		std::thread th,thw,thr;
+		bool th_end = false, ret = true, wait_w = false, wait_r = false;
 	public:
 		HANDLE inPipe, outPipe;
 		std::string Name;
@@ -15,6 +17,8 @@ namespace my {
 		io(std::string pipename);
 
 		bool join();
+
+		bool isWaiting();
 
 		//input
 		std::string operator <<(std::string);
@@ -47,27 +51,46 @@ namespace my {
 			0,                              // nInBufferSize
 			100,                            // nDefaultTimeOut
 			NULL);                          // lpSecurityAttributes
-	}
-
-	inline bool io::join()
-	{
-		bool ret = true;
-		std::thread th([this, &ret] {
+		thr = std::thread([this] {
 			if (inPipe == INVALID_HANDLE_VALUE) {
-				std::cout << "作成できなかった　><	(in)";
+				std::cout << Name + " : 作成できなかった　><	(in)";
+				ret = false;
+				th_end = true;
+				return;
 			}
+			wait_r = true;
 			if (!ConnectNamedPipe(inPipe, NULL)) {
-				std::cout << "接続できない!	(in)";
+				std::cout << Name + " : 接続できない!	(in)";
 				ret = false;
+				th_end = true;
+				return;
 			}
-
+			});
+		thw = std::thread([this] {
 			if (outPipe == INVALID_HANDLE_VALUE) {
-				std::cout << "作成できなかった　><	(out)";
-			}
-			if (!ConnectNamedPipe(outPipe, NULL)) {
-				std::cout << "接続できない!	(out)";
+				std::cout << Name + " : 作成できなかった　><	(out)";
 				ret = false;
+				th_end = true;
+				return;
 			}
+			wait_w = true;
+			if (!ConnectNamedPipe(outPipe, NULL)) {
+				std::cout << Name + " : 接続できない!	(out)";
+				ret = false;
+				th_end = true;
+				return;
+			}
+			});
+		th = std::thread([this] {
+			while (!th_end || isWaiting())
+			{
+				Sleep(100);
+			}
+			if (isWaiting())
+				return;
+
+			thr.detach();
+			thw.detach();
 
 			if (!ret) {
 				CloseHandle(inPipe);
@@ -75,7 +98,18 @@ namespace my {
 			}
 			}
 		);
+	}
+
+	inline bool io::join()
+	{
+		th.join();
+
 		return ret;
+	}
+
+	inline bool io::isWaiting()
+	{
+		return wait_r && wait_w;
 	}
 
 	inline std::string io::operator<<(std::string str)
@@ -83,7 +117,7 @@ namespace my {
 		str += "\n";
 		DWORD dw;
 		if (!WriteFile(outPipe, str.c_str(), str.length(), &dw, NULL)) {
-			std::cout << "書き込めない!";
+			std::cout << Name + " : 書き込めない!";
 			return str;
 		}
 		FlushFileBuffers(outPipe);
@@ -126,6 +160,10 @@ namespace my {
 		FlushFileBuffers(inPipe);
 		DisconnectNamedPipe(inPipe);
 		CloseHandle(inPipe);
+
+		th.detach();
+		thw.detach();
+		thr.detach();
 	}
 
 
