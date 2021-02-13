@@ -27,10 +27,15 @@ int main()
 {
 	// メタプログラミングみたいなものなので　こんなもんだと思って深い考察しないでw
 	// list << $コマンドの名前$ = share(new $作ったコマンド$);
-	list << "set" = share(new Set_Command("1.12"));
-	// list << "1.15" = share(new Server_Command("java -server -Xmx2G -Xms1G -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "D:/Minecraft/server1.15.2/", "1.15"));
-	list << "1.12" = share(new Server_Command(/*"java -server -Xmx2G -Xms1G -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui"*/"", "D:/Minecraft/server/", "1.12"));
-	list << "cmd" = share(new Server_Command("cmd", "", "cmd"));
+	list << "set" = share(new Set_Command("pvp"));
+	list << "survival" = share(new Server_Command("java -server -Xmx4G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/world", "survival"));
+	list << "flat" = share(new Server_Command("java -server -Xmx4G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/flat", "flat"));
+	list << "skyblock" = share(new Server_Command("java -server -Xmx8G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/skyblock", "skyblock"));
+	list << "hub" = share(new Server_Command("java -server -Xmx1G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/Hub", "hub"));
+	list << "pvp" = share(new Server_Command("java -server -Xmx4G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/pvp", "pvp"));
+	list << "pvp_snow" = share(new Server_Command("java -server -Xmx2G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/pvp/SnowBattle", "pvp_snow"));
+	list << "pvp_murder" = share(new Server_Command("java -server -Xmx2G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar spigot.jar nogui", "C:/Ahaha_world/pvp/murder", "pvp_murder"));
+	list << "server" = share(new Server_Command("java -server -Xmx1G -Xms1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSIncrementalPacing -XX:ParallelGCThreads=3 -XX:+AggressiveOpts -jar BungeeCord.jar nogui", "C:/Ahaha_world/server", "server"));
 	list << "end" = share(new End_Command);
 	list << "echo" = share(new Echo_Command);
 	list << "list" = share(new List_Command);
