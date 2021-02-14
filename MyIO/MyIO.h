@@ -7,8 +7,36 @@
 std::wstring utf8_decode(const std::string& str);
 
 namespace my {
+	namespace sub {
+		class Client {
+		public:
+			HANDLE hPipe;
+
+			Client(std::string pipename);
+			~Client();
+		};
+
+		inline Client::Client(std::string pipename)
+		{
+			hPipe = INVALID_HANDLE_VALUE;
+			hPipe = CreateFile(utf8_decode(R"(\\.\pipe\)" + pipename).c_str(), //lpName
+				GENERIC_WRITE,
+				0,
+				NULL,
+				OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL,
+				NULL);
+		}
+		inline Client::~Client()
+		{
+			CloseHandle(hPipe);
+		}
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+
 	class io {
-		std::thread th,thw,thr;
+		std::thread th, thw, thr;
 		bool th_end = false, ret = true, wait_w = false, wait_r = false;
 	public:
 		HANDLE inPipe, outPipe;
@@ -81,8 +109,9 @@ namespace my {
 				return;
 			}
 			});
+
 		th = std::thread([this] {
-			while (!th_end || isWaiting())
+			while (!th_end && !isWaiting())
 			{
 				Sleep(100);
 			}
@@ -133,6 +162,10 @@ namespace my {
 	}
 
 	inline std::string io::operator>>(std::string& str) {
+		if (this == nullptr) {
+			std::cout << "NullCout";
+			return "";
+		}
 		char buffer[256] = {};
 		DWORD dw;
 		if (!ReadFile(inPipe, buffer, sizeof(buffer), &dw, NULL)) {
@@ -155,43 +188,23 @@ namespace my {
 	inline io::~io()
 	{
 		FlushFileBuffers(outPipe);
+		bool Disconnected = false;
+		std::thread dummy_join([this, &Disconnected] {
+			while (!Disconnected)
+			{
+				sub::Client a(Name);
+			}
+			});
 		DisconnectNamedPipe(outPipe);
+		Disconnected = true;
 		CloseHandle(outPipe);
 		FlushFileBuffers(inPipe);
 		DisconnectNamedPipe(inPipe);
 		CloseHandle(inPipe);
 
+		dummy_join.join();
 		th.detach();
 		thw.detach();
 		thr.detach();
-	}
-
-
-	//--------------------------------------------------------------------------------------------------------------------
-
-	namespace sub {
-		class Client {
-		public:
-			HANDLE hPipe;
-
-			Client(std::string pipename);
-			~Client();
-		};
-
-		inline Client::Client(std::string pipename)
-		{
-			hPipe = INVALID_HANDLE_VALUE;
-			hPipe = CreateFile(utf8_decode(R"(\\.\pipe\)" + pipename).c_str(), //lpName
-				GENERIC_WRITE,
-				0,
-				NULL,
-				OPEN_EXISTING,
-				FILE_ATTRIBUTE_NORMAL,
-				NULL);
-		}
-		inline Client::~Client()
-		{
-			CloseHandle(hPipe);
-		}
 	}
 }
