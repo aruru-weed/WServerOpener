@@ -44,6 +44,11 @@ int main()
 			continue;
 		command_sturct cs(str);
 
-		list[cs.label]->run(cs);
+		try {
+			list[cs.label]->run(cs);
+		}
+		catch (std::out_of_range e) {
+			std::cout << e.what() << " : 引数が足りない!";
+		}
 	}
 }

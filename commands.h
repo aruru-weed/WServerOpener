@@ -13,6 +13,7 @@
 #include <exception>
 #include <algorithm>
 #include <chrono>
+#include <regex>
 
 #include <filesystem>
 
@@ -87,6 +88,8 @@ public:
 		wait = true;
 		io = make_unique<my::io>(pipeName);
 		Sleep(5);
+		if (WaitTh.joinable())
+			WaitTh.detach();
 		WaitTh = std::thread([this]() {
 			while (true)
 			{
@@ -99,15 +102,18 @@ public:
 				}
 				wait = false;
 				setupped = true;
-				cout << pipeName << ": ready!" << endl;
+				std::cout << pipeName << ": ready!" << endl;
+				if (ReadTh.joinable())
+					ReadTh.detach();
 				ReadTh = thread([this] {
 					while (setupped)
 					{
 						try {
+							std::string str;
 							*io >> cout;
 						}
 						catch (std::exception& e) {
-							cout << e.what() << ": 3•bŒã‚ÉÄ“Ç‚Ýž‚Ý‚µ‚Ü‚·Bby " + pipeName << endl;
+							std::cout << e.what() << ": 3•bŒã‚ÉÄ“Ç‚Ýž‚Ý‚µ‚Ü‚·Bby " + pipeName << endl;
 							Sleep(3000);
 						}
 					}
@@ -158,11 +164,12 @@ public:
 					io.reset();
 				}
 				// ‹N“®‚³‚¹‚é
-				start();
+				if (str_lower(cs.args.at(0)) == "start")
+					start();
 			}
 		}
 		catch (std::exception& e) {
-			cout << e.what() << endl;
+			std::cout << e.what() << endl;
 		}
 	}
 
@@ -177,7 +184,7 @@ class Server_Command : public Pipes_Command {
 	bool setuped_server = false;
 	std::string cmdLine;
 	fs::path JarPath;
-	std::thread Process, Enabling;
+	std::thread Process, Enabling, StartTh;
 public:
 	Server_Command(std::string _cmdLine, fs::path _JarPath, std::string PipeName) : Pipes_Command(PipeName), cmdLine(_cmdLine), JarPath(_JarPath) {
 		start();
@@ -187,6 +194,11 @@ public:
 		if (setuped_server)
 			return;
 
+		if (Process.joinable())
+			Process.detach();
+		if (Enabling.joinable())
+			Enabling.detach();
+
 		if (!Pipes_Command::wait)
 			Pipes_Command::start();
 
@@ -195,7 +207,6 @@ public:
 				while (!(*this)) {
 					Sleep(100);
 				}
-
 				SetCD(JarPath.string(), [this] {
 					Process = std::thread([this] {
 						const std::string p2cstr(R"( > \\.\pipe\)");
@@ -204,6 +215,7 @@ public:
 						system((cmdLine + p2cstr + pipeName + ".p2c" + c2pstr + pipeName + ".c2p").c_str());
 						setuped_server = false;
 						std::cout << "Stop " + pipeName;
+						Pipes_Command::stop();
 						});
 					});
 				while (!setuped_server)
@@ -218,27 +230,20 @@ public:
 			});
 	}
 
-	void stop() {
-		if (!setuped_server)
-			return;
-
-		(*io) << "stop";
-		Process.detach();
-		Enabling.detach();
-		Pipes_Command::stop();
-	}
-
 	void run(command_sturct& cs) {
-		if (str_lower(cs.args.at(0)) == "stop") {
-			stop();
-		}
+		if (str_lower(cs.args.at(0)) == "stop")
+			if (setuped_server) {
+				(*io) << "stop";
+				return;
+			}
 		// ‹N“®‚³‚¹‚é
-		else if (str_lower(cs.args.at(0)) == "start") {
+		if (str_lower(cs.args.at(0)) == "start") {
 			start();
 		}
 		// restart
 		else if (str_lower(cs.args.at(0)) == "restart") {
-			stop();
+			(*io) << "stop";
+			Process.join();
 			start();
 		}
 		else {
@@ -249,7 +254,10 @@ public:
 	~Server_Command() {
 		stop();
 		Pipes_Command::~Pipes_Command();
-		Process.detach();
+		if (Process.joinable())
+			Process.detach();
+		if (Enabling.joinable())
+			Enabling.detach();
 	}
 };
 
@@ -302,7 +310,8 @@ class Echo_Command : public Command {
 //	list
 class List_Command : public Command {
 	void run(command_sturct& cs) {
-		for (auto& i : list.getMap())
+		for (auto& i : list.getMap()) {
 			std::cout << i.first << std::endl;
+		}
 	}
 };
